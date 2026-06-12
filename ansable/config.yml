@@ -1,8 +1,8 @@
 # ── Deploy configuration for the UNRIVAL fixture film kiosk ──────────────
 # Edit these to match your Pi. Connection host/IP lives in inventory.ini.
 
-# Login user you created when imaging the Pi (Bookworm has no default "pi" user)
-ansible_user: pi
+# Login user on the Pi
+ansible_user: chauvetdev
 
 # Where the site lives on the Pi
 remote_base_path: "/home/{{ ansible_user }}"

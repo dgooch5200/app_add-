@@ -15,5 +15,8 @@ videos*/
 assets/storm1flex-hi/
 # NOTE: assets/vendor/ (three.js, gsap, fonts) is committed on purpose —
 # production runs offline, so the vendored runtime deps must travel with the repo.
+
+# Environment-specific Ansible inventory (IP + key path) — use inventory.ini.example
+ansable/inventory.ini
 MAVERICK-STORM-1-FLEX-RIGHT.png
 unrival app icon-*.png

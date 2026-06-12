@@ -1,0 +1,8 @@
+# Copy to inventory.ini and fill in your Pi. inventory.ini is gitignored
+# (it holds an environment-specific IP + key path).
+#
+#   cp inventory.ini.example inventory.ini
+#
+# ansible_user comes from config.yml.
+[pi4]
+PI_IP_OR_HOST ansible_ssh_private_key_file=~/.ssh/your_key
