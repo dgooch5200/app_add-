@@ -393,3 +393,11 @@ html, body {
   #chapters button { padding: 5px 6px; font-size: 8.5px; }
   #brandbar { padding: 16px 18px; }
 }
+
+/* ═══════════════ KIOSK MODE (?kiosk) ══════════════════════
+   Raspberry Pi installation: hide every dev/control affordance
+   and the cursor so the film plays as an untouchable clean loop. */
+.kiosk #scrubber,
+.kiosk #hint,
+.kiosk #paused-badge { display: none !important; }
+.kiosk, .kiosk * { cursor: none !important; }

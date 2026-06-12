@@ -1446,31 +1446,38 @@ window.__dev = { scene, camera, renderer, composer, fixtures, THREE };
 
 /* ═══════════════ INTERACTION ══════════════════════════ */
 
-chapterBtns.forEach((b) => {
-  b.addEventListener("click", (e) => {
-    e.stopPropagation();
-    tl.seek(T[b.dataset.t], false); // fire callbacks so scrambled text settles
-    tl.play();
-    gsap.to("#paused-badge", { autoAlpha: 0, duration: 0.2 });
+// Kiosk mode (?kiosk): hide all dev chrome + disable click/key interaction so
+// the Pi installation plays as a clean, untouchable loop. Dev build is unaffected.
+const KIOSK = new URLSearchParams(location.search).has("kiosk");
+if (KIOSK) document.documentElement.classList.add("kiosk");
+
+if (!KIOSK) {
+  chapterBtns.forEach((b) => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      tl.seek(T[b.dataset.t], false); // fire callbacks so scrambled text settles
+      tl.play();
+      gsap.to("#paused-badge", { autoAlpha: 0, duration: 0.2 });
+    });
   });
-});
 
-document.body.addEventListener("click", () => {
-  if (tl.paused()) {
-    tl.play();
-    gsap.to("#paused-badge", { autoAlpha: 0, duration: 0.25 });
-  } else {
-    tl.pause();
-    gsap.to("#paused-badge", { autoAlpha: 1, duration: 0.25 });
-  }
-});
+  document.body.addEventListener("click", () => {
+    if (tl.paused()) {
+      tl.play();
+      gsap.to("#paused-badge", { autoAlpha: 0, duration: 0.25 });
+    } else {
+      tl.pause();
+      gsap.to("#paused-badge", { autoAlpha: 1, duration: 0.25 });
+    }
+  });
 
-addEventListener("keydown", (e) => {
-  if (e.code === "Space") {
-    e.preventDefault();
-    document.body.click();
-  }
-});
+  addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      document.body.click();
+    }
+  });
+}
 
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;

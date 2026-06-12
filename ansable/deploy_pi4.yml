@@ -1,0 +1,214 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Deploy the UNRIVAL fixture film to a Raspberry Pi 4 as a boot-to-kiosk.
+#
+#   Raspberry Pi OS Bookworm Desktop (Wayland: labwc / wayfire)
+#   • rsync the static site to the Pi
+#   • serve it with `python3 -m http.server` (systemd service)
+#   • Chromium autostarts fullscreen in --kiosk (no toolbars/cursor chrome)
+#   • desktop autologin so it comes up on every power-on, unattended
+#
+# Usage:
+#   cd ansable
+#   ansible-playbook -i inventory.ini deploy_pi4.yml --ask-become-pass
+#
+# Then reboot the Pi once:  ansible -i inventory.ini pi4 -b -m reboot
+# ═══════════════════════════════════════════════════════════════════════
+- hosts: pi4
+  vars_files:
+    - config.yml
+
+  tasks:
+    # ── Control machine: make sure the offline-vendored libs exist ───────
+    - name: Check for vendored three.js on the control machine
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ local_project_path }}/assets/vendor/three/three.module.js"
+      register: vendor_three
+
+    - name: Vendor three.js + gsap locally if missing (offline-safe runtime)
+      delegate_to: localhost
+      when: not vendor_three.stat.exists
+      ansible.builtin.shell: |
+        set -e
+        mkdir -p assets/vendor/three
+        tmp=$(mktemp -d)
+        curl -fsSL "https://registry.npmjs.org/three/-/three-{{ three_version }}.tgz" -o "$tmp/three.tgz"
+        tar -xzf "$tmp/three.tgz" -C "$tmp"
+        cp "$tmp/package/build/three.module.js" assets/vendor/three/three.module.js
+        rm -rf assets/vendor/three/jsm
+        cp -R "$tmp/package/examples/jsm" assets/vendor/three/jsm
+        curl -fsSL "https://cdn.jsdelivr.net/npm/gsap@{{ gsap_version }}/dist/gsap.min.js" -o assets/vendor/gsap.min.js
+        rm -rf "$tmp"
+      args:
+        chdir: "{{ local_project_path }}"
+
+    # ── Pi: packages ────────────────────────────────────────────────────
+    - name: Install kiosk packages on the Pi
+      become: yes
+      ansible.builtin.apt:
+        name:
+          - chromium-browser   # the kiosk browser
+          - python3            # static file server (usually preinstalled)
+          - rsync              # for the synchronize tasks below
+          - curl               # launch script waits on the server with it
+        state: present
+        update_cache: yes
+
+    # ── Pi: ship the static site ────────────────────────────────────────
+    - name: Ensure the project directory exists
+      become: yes
+      ansible.builtin.file:
+        path: "{{ remote_base_path }}/{{ project_name }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Sync site directories to the Pi
+      ansible.builtin.synchronize:
+        src: "{{ local_project_path }}/{{ item }}/"
+        dest: "{{ remote_base_path }}/{{ project_name }}/{{ item }}/"
+        delete: yes
+        rsync_opts:
+          - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+          - "--exclude=storm1flex-hi"   # hi-res source art, not needed at runtime
+      loop:
+        - css
+        - js
+        - assets
+
+    - name: Copy index.html to the Pi
+      ansible.builtin.copy:
+        src: "{{ local_project_path }}/index.html"
+        dest: "{{ remote_base_path }}/{{ project_name }}/index.html"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    # ── Pi: serve the site with a tiny systemd service ──────────────────
+    - name: Create the static-server systemd service
+      become: yes
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ project_name }}.service"
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=UNRIVAL fixture film - static HTTP server
+          After=network.target
+
+          [Service]
+          User={{ ansible_user }}
+          WorkingDirectory={{ remote_base_path }}/{{ project_name }}
+          ExecStart=/usr/bin/python3 -m http.server {{ http_port }} --bind 127.0.0.1
+          Restart=always
+          RestartSec=2
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and (re)start the static server
+      become: yes
+      ansible.builtin.systemd:
+        name: "{{ project_name }}.service"
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+
+    # ── Pi: the kiosk launch script ─────────────────────────────────────
+    - name: Install the Chromium kiosk launch script
+      ansible.builtin.copy:
+        dest: "{{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+        content: |
+          #!/usr/bin/env bash
+          set -u
+          URL="{{ kiosk_url }}"
+          PROFILE="$HOME/.config/chromium-kiosk"
+
+          # Wait until the local static server is actually answering
+          until curl -fsS "$URL" >/dev/null 2>&1; do sleep 1; done
+
+          # A power-cut leaves Chromium thinking it crashed -> "Restore pages?"
+          # bar. Scrub that flag so the kiosk always comes up clean.
+          PREF="$PROFILE/Default/Preferences"
+          if [ -f "$PREF" ]; then
+            sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "$PREF"
+          fi
+
+          exec chromium-browser \
+            --kiosk \
+            --app="$URL" \
+            --user-data-dir="$PROFILE" \
+            --ozone-platform=wayland \
+            --start-fullscreen \
+            --noerrdialogs \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --disable-restore-session-state \
+            --disable-features=Translate,TranslateUI \
+            --check-for-update-interval=31536000 \
+            --autoplay-policy=no-user-gesture-required
+
+    # ── Pi: autostart the kiosk under whichever Wayland compositor runs ──
+    - name: Ensure ~/.config/labwc exists
+      ansible.builtin.file:
+        path: "{{ remote_base_path }}/.config/labwc"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: labwc - launch the kiosk on session start
+      ansible.builtin.blockinfile:
+        path: "{{ remote_base_path }}/.config/labwc/autostart"
+        create: yes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+        marker: "# {mark} UNRIVAL KIOSK"
+        block: |
+          {{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh &
+
+    - name: wayfire - launch the kiosk on session start
+      community.general.ini_file:
+        path: "{{ remote_base_path }}/.config/wayfire.ini"
+        section: autostart
+        option: unrival_kiosk
+        value: "{{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+        create: yes
+
+    - name: wayfire - never blank the screen while the kiosk is fullscreen
+      community.general.ini_file:
+        path: "{{ remote_base_path }}/.config/wayfire.ini"
+        section: idle
+        option: "{{ item.k }}"
+        value: "{{ item.v }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+      loop:
+        - { k: "dpms_timeout", v: "-1" }
+        - { k: "disable_on_fullscreen", v: "true" }
+
+    # ── Pi: boot straight into the desktop session, no login prompt ─────
+    - name: Boot to desktop with autologin (so the kiosk starts unattended)
+      become: yes
+      ansible.builtin.command: raspi-config nonint do_boot_behaviour B4
+      changed_when: false
+
+    - name: Disable console screen blanking
+      become: yes
+      ansible.builtin.command: raspi-config nonint do_blanking 1
+      changed_when: false
+
+    - name: Reminder
+      ansible.builtin.debug:
+        msg: >-
+          Deployed. Reboot the Pi to start the kiosk:
+          ansible -i inventory.ini pi4 -b -m reboot

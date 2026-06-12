@@ -1,0 +1,21 @@
+# ── Deploy configuration for the UNRIVAL fixture film kiosk ──────────────
+# Edit these to match your Pi. Connection host/IP lives in inventory.ini.
+
+# Login user you created when imaging the Pi (Bookworm has no default "pi" user)
+ansible_user: pi
+
+# Where the site lives on the Pi
+remote_base_path: "/home/{{ ansible_user }}"
+project_name: unrival-film
+
+# Local static HTTP server (served on the Pi, bound to localhost)
+http_port: 8080
+# ?kiosk hides the on-page dev chrome (scrubber, chapter nav, hint, cursor)
+kiosk_url: "http://localhost:{{ http_port }}/?kiosk"
+
+# Project root on this (control) machine — the dir above ansable/
+local_project_path: "{{ playbook_dir }}/.."
+
+# Versions vendored into assets/vendor/ (must match index.html importmap)
+three_version: "0.160.0"
+gsap_version: "3.12.5"
