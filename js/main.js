@@ -39,8 +39,27 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.35;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a101c);
-scene.fog = new THREE.FogExp2(0x0a101c, 0.02);
+
+// ── retro-dusk sky — a subtle synthwave gradient instead of a flat color.
+//    Stays dark so it never competes with the demo; just a hint of dusk. ──
+const skyCanvas = document.createElement("canvas");
+skyCanvas.width = 8;
+skyCanvas.height = 256;
+{
+  const x = skyCanvas.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0.0, "#05060e"); // zenith — near black
+  g.addColorStop(0.42, "#0b0a1e"); // deep indigo
+  g.addColorStop(0.7, "#1d1233"); // violet
+  g.addColorStop(0.86, "#341a3f"); // dusky magenta
+  g.addColorStop(1.0, "#4a2145"); // muted rose at the horizon
+  x.fillStyle = g;
+  x.fillRect(0, 0, 8, 256);
+}
+const skyTex = new THREE.CanvasTexture(skyCanvas);
+skyTex.colorSpace = THREE.SRGBColorSpace;
+scene.background = skyTex;
+scene.fog = new THREE.FogExp2(0x0a0a1a, 0.02);
 
 // studio environment so the metal fixture bodies pick up reflections —
 // without this they crush to black (tradeshow screens need the lift)
@@ -54,6 +73,7 @@ const camTarget = new THREE.Vector3(0, 1, 0);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.55, 0.4);
+bloom.enabled = false; // bloom OFF — composer skips this pass (strength tweens are inert)
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -82,7 +102,7 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-const grid = new THREE.GridHelper(60, 60, 0x2e4366, 0x1c2940);
+const grid = new THREE.GridHelper(60, 60, 0x3f86e0, 0x243a66); // neon-blue lines, retro nod
 grid.material.transparent = true;
 grid.material.opacity = 0.3;
 grid.position.y = 0.002;
@@ -112,14 +132,48 @@ pool.position.y = 0.01;
 pool.material.opacity = 0;
 scene.add(pool);
 
-// distant brand mark — the square app icon floating upstage in the haze
+// ── distant synthwave sun, low on the horizon behind everything — warm/pink
+//    glow with the classic scanline bands. Never fogged; kept subtle. ──
+const sunCanvas = document.createElement("canvas");
+sunCanvas.width = sunCanvas.height = 512;
+{
+  const x = sunCanvas.getContext("2d");
+  const g = x.createRadialGradient(256, 256, 0, 256, 256, 256);
+  g.addColorStop(0.0, "rgba(255,228,150,0.95)"); // warm core
+  g.addColorStop(0.34, "rgba(255,150,120,0.85)");
+  g.addColorStop(0.6, "rgba(255,86,150,0.55)"); // pink
+  g.addColorStop(0.85, "rgba(150,44,130,0.12)");
+  g.addColorStop(1.0, "rgba(150,44,130,0.0)");
+  x.fillStyle = g;
+  x.fillRect(0, 0, 512, 512);
+  // erase horizontal bands across the lower half (gaps grow toward the bottom)
+  x.globalCompositeOperation = "destination-out";
+  x.fillStyle = "#000";
+  for (let i = 0; i < 8; i++) {
+    const t = i / 8;
+    x.fillRect(0, 268 + t * t * 244, 512, 4 + i * 3);
+  }
+}
+const sunTex = new THREE.CanvasTexture(sunCanvas);
+sunTex.colorSpace = THREE.SRGBColorSpace;
+const sun = new THREE.Mesh(
+  new THREE.PlaneGeometry(62, 62),
+  new THREE.MeshBasicMaterial({
+    map: sunTex, transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+  })
+);
+sun.position.set(0, 9, -96);
+scene.add(sun);
+
+// distant brand mark — the square app icon floating deep upstage
 const iconTex = new THREE.TextureLoader().load("assets/icon.png");
 iconTex.colorSpace = THREE.SRGBColorSpace;
 const brandIcon = new THREE.Mesh(
   new THREE.PlaneGeometry(6, 6),
   new THREE.MeshBasicMaterial({
     map: iconTex, transparent: true, opacity: 0,
-    color: 0x9fb3d9, depthWrite: false,
+    color: 0xffffff, depthWrite: false,
   })
 );
 brandIcon.position.set(0, 5.8, -34);
@@ -145,12 +199,11 @@ const shotMats = [], SHOT_OPS = [];
 const shots = SHOT_ANGLES.map((deg, i) => {
   const a = deg * Math.PI / 180, R = SHOT_R[i], h = SHOT_H[i];
   const x = R * Math.sin(a), z = -R * Math.cos(a), y = SHOT_Y[i];
-  const op = +(0.6 - (R - 30) / 14 * 0.18).toFixed(2); // nearer cards a touch brighter
+  const op = +(0.85 - (R - 30) / 14 * 0.2).toFixed(2); // brighter; nearer cards a touch more
   SHOT_OPS.push(op);
   const m = new THREE.MeshBasicMaterial({
     map: shotTexes[SHOT_IMG[i]], transparent: true, opacity: 0,
-    color: 0xd0e0f8, depthWrite: false,
-    blending: THREE.AdditiveBlending, fog: false, // dark UI glows, black vanishes
+    color: 0xffffff, depthWrite: false, fog: false, // solid cards (normal blend, true colors)
   });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(h * SHOT_ASPECT, h), m);
   mesh.position.set(x, y, z);
@@ -161,25 +214,6 @@ const shots = SHOT_ANGLES.map((deg, i) => {
   scene.add(mesh);
   return mesh;
 });
-
-/* ═══════════════ HAZE ═════════════════════════════════ */
-
-const hazeTex = radialTexture("rgba(160,190,255,0.5)", "rgba(160,190,255,0)");
-const hazeGeo = new THREE.BufferGeometry();
-const HAZE_N = 420;
-const hazePos = new Float32Array(HAZE_N * 3);
-for (let i = 0; i < HAZE_N; i++) {
-  hazePos[i * 3] = (Math.random() - 0.5) * 34;
-  hazePos[i * 3 + 1] = Math.random() * 9;
-  hazePos[i * 3 + 2] = (Math.random() - 0.5) * 22;
-}
-hazeGeo.setAttribute("position", new THREE.BufferAttribute(hazePos, 3));
-const hazeMat = new THREE.PointsMaterial({
-  map: hazeTex, size: 1.5, transparent: true, opacity: 0.02,
-  depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
-});
-const haze = new THREE.Points(hazeGeo, hazeMat);
-scene.add(haze);
 
 /* ═══════════════ BEAM SHADER ══════════════════════════ */
 
@@ -207,7 +241,7 @@ const beamFrag = /* glsl */ `
     float axial = pow(1.0 - vUv.y, 1.7);
     float soft  = smoothstep(0.0, 0.05, vUv.y);
     float edge  = pow(abs(dot(vNormal, vViewDir)), 1.35);
-    float flick = 0.93 + 0.07 * sin(uTime * 21.0 + uSeed * 13.0) * sin(uTime * 6.7 + uSeed);
+    float flick = 0.97 + 0.03 * sin(uTime * 21.0 + uSeed * 13.0) * sin(uTime * 6.7 + uSeed);
     float a = axial * soft * edge * uIntensity * flick;
     gl_FragColor = vec4(uColor, a);
   }
@@ -236,6 +270,12 @@ function beamGeometry(len, radius) {
 }
 const beamGeoOuter = beamGeometry(15, 1.7);
 const beamGeoInner = beamGeometry(15, 0.55);
+
+// Global beam-output ceiling — locked to the look at the 10-second mark
+// (the soft single intro beam: outer 0.22, no inner core). Enforced as a hard
+// clamp in the render loop so no light in any scene ever goes brighter.
+const BEAM_CAP_OUTER = 0.22;
+const BEAM_CAP_CORE = 0.0;
 
 const glowTex = radialTexture("rgba(190,215,255,0.9)", "rgba(190,215,255,0)");
 
@@ -940,10 +980,15 @@ tl.set(".nfcdot", { clearProps: "backgroundColor,boxShadow" }, 0);
 // the distant app icon only lives in the middle chapters — never alongside
 // the foreground wordmark (intro + finale)
 tl.set(brandIcon.material, { opacity: 0 }, 0);
-tl.to(brandIcon.material, { opacity: 0.14, duration: 2.5 }, T.fixture + 1);
+tl.to(brandIcon.material, { opacity: 1, duration: 2.5 }, T.fixture + 1);
 tl.to(brandIcon.material, { opacity: 0, duration: 1.6 }, T.finale - 2.6);
+// the retro sun rides the same envelope — atmosphere behind the demo body,
+// cleared for the clean intro/finale wordmarks so it never washes the title
+tl.set(sun.material, { opacity: 0 }, 0);
+tl.to(sun.material, { opacity: 0.12, duration: 2.5 }, T.fixture + 1);
+tl.to(sun.material, { opacity: 0, duration: 1.6 }, T.finale - 2.6);
 shotMats.forEach((m) => tl.set(m, { opacity: 0 }, 0));
-tl.to(shotMats, { opacity: (i) => SHOT_OPS[i], duration: 2.5, stagger: 0.11 }, T.fixture + 1.3);
+tl.to(shotMats, { opacity: 1, duration: 2.5, stagger: 0.11 }, T.fixture + 1.3);
 // backdrop clears completely before the finale fan builds — keeps the end clean
 tl.to(shotMats, { opacity: 0, duration: 1.2, stagger: 0.04 }, T.finale - 2.6);
 fixtures.forEach((fx, i) => {
@@ -989,9 +1034,9 @@ fixtures.forEach((fx, i) => {
   tl.to(pool.material, { opacity: 1, duration: 3 }, s + 1);
   tl.fromTo(hero.dispMat, { opacity: 0 }, { opacity: 0.95, duration: 0.4, ease: "steps(3)" }, s + 2);
 
-  // beam show-off
-  tl.fromTo(hero.beamMat.uniforms.uIntensity, { value: 0 }, { value: 0.8, duration: 0.5, ease: "power4.in" }, s + 4.5);
-  tl.fromTo(hero.beamCoreMat.uniforms.uIntensity, { value: 0 }, { value: 0.32, duration: 0.5, ease: "power4.in" }, s + 4.5);
+  // beam show-off — capped below full output so bloom doesn't flicker
+  tl.fromTo(hero.beamMat.uniforms.uIntensity, { value: 0 }, { value: 0.6, duration: 0.5, ease: "power4.in" }, s + 4.5);
+  tl.fromTo(hero.beamCoreMat.uniforms.uIntensity, { value: 0 }, { value: 0.24, duration: 0.5, ease: "power4.in" }, s + 4.5);
   tl.fromTo(hero.head.rotation, { x: -0.3 }, { x: -1.45, duration: 2.2, ease: "power3.inOut" }, s + 4.5);
   tl.to(hero.yoke.rotation, { y: -0.9, duration: 2.6, ease: "sine.inOut" }, s + 6.5);
   tl.to(hero.yoke.rotation, { y: 0.9, duration: 3.4, ease: "sine.inOut" }, s + 9.1);
@@ -1143,8 +1188,8 @@ fixtures.forEach((fx, i) => {
 
   // payoff: the fixture powers up and confirms
   tl.fromTo(hero.dispMat, { opacity: 0 }, { opacity: 0.95, duration: 0.3 }, s + 6.4);
-  tl.fromTo(hero.beamMat.uniforms.uIntensity, { value: 0 }, { value: 0.8, duration: 0.4, ease: "power4.in" }, s + 7);
-  tl.fromTo(hero.beamCoreMat.uniforms.uIntensity, { value: 0 }, { value: 0.3, duration: 0.4, ease: "power4.in" }, s + 7);
+  tl.fromTo(hero.beamMat.uniforms.uIntensity, { value: 0 }, { value: 0.6, duration: 0.4, ease: "power4.in" }, s + 7);
+  tl.fromTo(hero.beamCoreMat.uniforms.uIntensity, { value: 0 }, { value: 0.22, duration: 0.4, ease: "power4.in" }, s + 7);
   tl.to(hero.head.rotation, { x: -1.5, duration: 1.6, ease: "power3.inOut" }, s + 7.1);
   // double identify-pulse
   tl.to(hero.beamMat.uniforms.uIntensity, { value: 0.25, duration: 0.16, repeat: 3, yoyo: true, ease: "none" }, s + 9);
@@ -1332,18 +1377,16 @@ function frame() {
   fixtures.forEach((fx) => {
     fx.beamMat.uniforms.uTime.value = elapsed;
     fx.beamCoreMat.uniforms.uTime.value = elapsed;
+    // HARD CEILING — no light ever exceeds its look at the 10s mark
+    // (soft single beam: outer 0.22, no inner core). Clamping here, after the
+    // timeline sets the uniforms, guarantees it for every scene incl. the finale.
+    if (fx.beamMat.uniforms.uIntensity.value > BEAM_CAP_OUTER)
+      fx.beamMat.uniforms.uIntensity.value = BEAM_CAP_OUTER;
+    if (fx.beamCoreMat.uniforms.uIntensity.value > BEAM_CAP_CORE)
+      fx.beamCoreMat.uniforms.uIntensity.value = BEAM_CAP_CORE;
     const k = fx.beamMat.uniforms.uIntensity.value;
     fx.lensMat.color.copy(fx.beamMat.uniforms.uColor.value).multiplyScalar(0.06 + k * 1.4);
   });
-
-  // haze drift
-  const hp = hazeGeo.attributes.position.array;
-  for (let i = 0; i < HAZE_N; i++) {
-    hp[i * 3] += Math.sin(elapsed * 0.12 + i) * 0.0012;
-    hp[i * 3 + 1] += 0.0014;
-    if (hp[i * 3 + 1] > 9) hp[i * 3 + 1] = 0;
-  }
-  hazeGeo.attributes.position.needsUpdate = true;
 
   if (stream.active > 0.001) updateStream(elapsed);
   else streamPts.visible = false;
