@@ -1,0 +1,395 @@
+/* ═══════════════════════════════════════════════════════════
+   UNRIVAL — FIXTURE FILM 001  ·  "Concert Black"
+   Palette: UNRIVAL electric blue #3F83F8 on stage black
+   Type:    Big Shoulders Display / IBM Plex Mono
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --blue:        #3F83F8;
+  --blue-soft:   rgba(63, 131, 248, 0.55);
+  --cyan:        #6EE7F9;
+  --bg:          #04060B;
+  --surface:     rgba(10, 12, 16, 0.72);
+  --line:        rgba(255, 255, 255, 0.09);
+  --txt:         #FFFFFF;
+  --txt-2:       rgba(255, 255, 255, 0.82);
+  --txt-mute:    rgba(255, 255, 255, 0.45);
+  --ok:          #4ADE80;
+  --disp:        "Big Shoulders Display", sans-serif;
+  --mono:        "IBM Plex Mono", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--mono);
+  cursor: crosshair;
+}
+
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+#ui { position: fixed; inset: 0; pointer-events: none; }
+
+/* ── persistent chrome ─────────────────────────────────── */
+
+#brandbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 22px 32px; z-index: 40;
+  font-size: 11px; letter-spacing: 0.22em; color: var(--txt-mute);
+}
+.bb-logo {
+  height: 64px; margin: -20px 0 -20px -14px; display: block;
+  filter: drop-shadow(0 0 14px rgba(63,131,248,0.35)) brightness(1.5) saturate(0.7);
+}
+
+.letterbox {
+  position: absolute; left: 0; right: 0; height: 4.2vh;
+  background: #000; z-index: 30;
+}
+.lb-top { top: 0; } .lb-bottom { bottom: 0; }
+
+#vignette {
+  position: absolute; inset: 0; z-index: 25;
+  background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 60%, rgba(0,0,0,0.3) 100%);
+}
+
+
+/* ── chapter / typography system ───────────────────────── */
+
+.ch {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  visibility: hidden; opacity: 0;
+}
+.ch-low { justify-content: flex-end; padding-bottom: 15vh; }
+.ch-side {
+  align-items: flex-end; text-align: right;
+  justify-content: center;
+  padding-right: 6.5vw;
+}
+
+.kicker {
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.34em; color: var(--blue);
+  margin-bottom: 14px; text-transform: uppercase;
+}
+
+.headline {
+  font-family: var(--disp); font-weight: 900;
+  font-size: clamp(56px, 9.5vw, 150px);
+  line-height: 0.88; letter-spacing: 0.015em;
+  text-transform: uppercase;
+  text-shadow: 0 0 60px rgba(63,131,248,0.25);
+}
+.headline.hl-sm { font-size: clamp(40px, 5.6vw, 88px); }
+
+.mega {
+  font-family: var(--disp); font-weight: 900;
+  font-size: clamp(90px, 17vw, 280px);
+  line-height: 0.85; letter-spacing: 0.02em;
+  display: flex; gap: 0.04em;
+}
+.mega.sm { font-size: clamp(70px, 12vw, 200px); }
+.mega span { display: inline-block; }
+
+.sub {
+  font-size: 12px; letter-spacing: 0.42em;
+  color: var(--txt-2); margin-top: 26px;
+}
+
+/* real brand wordmark — logo-tight.png is cropped to the glyphs, so the
+   layout box matches what's drawn and never covers the text around it */
+#intro-logo {
+  width: min(54vw, 715px);
+  margin: 3.5vh 0;
+  filter: drop-shadow(0 0 50px rgba(63,131,248,0.45)) brightness(1.35);
+}
+#finale-logo {
+  width: min(42vw, 545px);
+  margin: 3vh 0;
+  filter: drop-shadow(0 0 60px rgba(63,131,248,0.5)) brightness(1.35);
+}
+
+.body {
+  font-size: 13px; line-height: 1.9; letter-spacing: 0.14em;
+  color: var(--txt-2); margin-top: 22px; text-transform: uppercase;
+}
+.body .hl { font-style: normal; color: var(--blue); font-weight: 600; }
+
+/* ── scene 1: spec ticks ───────────────────────────────── */
+
+#spec-ticks { position: absolute; inset: 0; z-index: 18; visibility: hidden; }
+.tick {
+  position: absolute; display: flex; align-items: center; gap: 10px;
+  font-size: 10px; letter-spacing: 0.3em; color: var(--txt-mute);
+  opacity: 0;
+}
+.tick i { display: block; width: 54px; height: 1px; background: var(--blue-soft); }
+.t1 { top: 30%; left: 12%; }
+.t2 { top: 42%; right: 12%; flex-direction: row-reverse; }
+.t3 { top: 58%; left: 15%; }
+.t4 { top: 54%; right: 10%; flex-direction: row-reverse; }
+
+/* ── cards (read / edit / plot) ────────────────────────── */
+
+.card {
+  margin-top: 30px; width: min(380px, 38vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  padding: 18px 20px 14px;
+  text-align: left;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+}
+.card-head {
+  font-size: 10px; letter-spacing: 0.3em; color: var(--blue);
+  padding-bottom: 12px; margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.card .row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 7px 0; font-size: 12px;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.card .row:last-child { border-bottom: none; }
+.card .row span { color: var(--txt-mute); letter-spacing: 0.18em; font-size: 10px; }
+.card .row b { font-weight: 600; letter-spacing: 0.08em; min-height: 1em; }
+.card .row b.ok { color: var(--ok); }
+
+/* record chips */
+#record-chips { display: flex; gap: 10px; margin-top: 28px; }
+.chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 7px; padding: 9px 13px;
+  backdrop-filter: blur(10px);
+  font-size: 10px; letter-spacing: 0.14em;
+  opacity: 0;
+}
+.chip b {
+  font-family: var(--disp); font-weight: 900; font-size: 16px;
+  color: var(--blue); letter-spacing: 0.06em;
+}
+.chip .chip-label { color: var(--txt-2); min-width: 7ch; text-align: left; }
+
+/* ── scene 4: DMX counter ──────────────────────────────── */
+
+#dmx-block { margin-top: 26px; text-align: right; }
+.dmx-label { font-size: 10px; letter-spacing: 0.34em; color: var(--txt-mute); margin-bottom: 6px; }
+
+#dmx-counter {
+  display: inline-flex; gap: 0.04em;
+  font-family: var(--disp); font-weight: 900;
+  font-size: clamp(110px, 15vw, 230px); line-height: 1;
+  color: var(--txt);
+  text-shadow: 0 0 70px rgba(63,131,248,0.45);
+}
+.digitcol { height: 1em; overflow: hidden; }
+.strip { display: flex; flex-direction: column; will-change: transform; }
+.strip div { height: 1em; line-height: 1; }
+
+.universe {
+  display: flex; align-items: center; gap: 12px; margin-top: 10px;
+  font-size: 10px; letter-spacing: 0.2em; color: var(--txt-mute);
+}
+.uni-track {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.08); position: relative; overflow: visible;
+}
+.uni-fill {
+  position: absolute; top: -1px; height: 5px; border-radius: 3px;
+  left: 0.2%; width: 4.3%;
+  background: var(--blue);
+  box-shadow: 0 0 14px var(--blue);
+}
+
+.card.slim { width: min(320px, 32vw); margin-top: 22px; }
+.mode-window { height: 34px; overflow: hidden; margin: 10px 0 4px; }
+.mode-strip { will-change: transform; }
+.mode {
+  height: 34px; display: flex; align-items: center;
+  font-size: 15px; font-weight: 600; letter-spacing: 0.12em;
+  color: var(--txt-mute);
+}
+.mode.sel { color: var(--blue); }
+
+/* ── scene 5: write ring ───────────────────────────────── */
+
+#write-ring { position: relative; width: 150px; height: 150px; margin-top: 34px; }
+#write-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 3; }
+.ring-fg {
+  fill: none; stroke: var(--blue); stroke-width: 3; stroke-linecap: round;
+  stroke-dasharray: 326.7; stroke-dashoffset: 326.7;
+  filter: drop-shadow(0 0 8px var(--blue));
+}
+.ring-check {
+  fill: none; stroke: var(--txt); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 80; stroke-dashoffset: 80;
+  transform: rotate(90deg); transform-origin: 60px 60px;
+}
+.ring-time {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; letter-spacing: 0.2em; color: var(--txt-2);
+}
+#write-stamp { font-size: 11px; color: var(--ok); }
+
+/* ── scene 6: prep meter ───────────────────────────────── */
+
+#prep-meter { margin-top: 26px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.prep-count { font-size: 13px; letter-spacing: 0.3em; color: var(--txt-2); }
+.prep-count b {
+  font-family: var(--disp); font-weight: 900; font-size: 34px;
+  color: var(--blue); margin-right: 2px;
+}
+.prep-cells { display: flex; gap: 7px; }
+.prep-cells i {
+  width: 26px; height: 8px; border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--line);
+  transition: none;
+}
+.prep-cells i.on {
+  background: var(--blue);
+  box-shadow: 0 0 12px var(--blue);
+  border-color: var(--blue);
+}
+
+#prep-log {
+  position: absolute; left: 4.5vw; top: 22vh; text-align: left;
+  font-size: 10px; line-height: 2; letter-spacing: 0.12em; color: var(--txt-mute);
+}
+#prep-log div { opacity: 0; }
+#prep-log div b { color: var(--ok); font-weight: 500; }
+
+/* ── scene 7: rapid patching ───────────────────────────── */
+
+#import-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 26px;
+}
+.ichip b { font-size: 14px; }
+.ichip span { min-width: 0; font-size: 9px; color: var(--txt-mute); }
+#import-spin { width: 22px; height: 22px; animation: spin-rot 0.9s linear infinite; }
+#import-spin circle {
+  fill: none; stroke: var(--blue); stroke-width: 5;
+  stroke-dasharray: 70 28; stroke-linecap: round;
+}
+@keyframes spin-rot { to { transform: rotate(360deg); } }
+#import-stamp {
+  font-size: 10px; letter-spacing: 0.22em; color: var(--ok); font-weight: 600;
+}
+
+.prow .pchk {
+  font-style: normal; color: var(--ok); font-weight: 700;
+  width: 1.3ch; margin-left: 4px; opacity: 0;
+}
+
+#fix360 {
+  position: absolute; left: 6vw; top: 50%;
+  transform: translateY(-50%);
+  width: min(280px, 24vw); margin-top: 0;
+}
+#spin360 {
+  width: 100%; display: block; border-radius: 8px;
+  margin: 12px 0 4px;
+}
+#fix360 .card-foot { border-top: none; margin-top: 4px; padding-top: 4px; }
+
+#patch-card { width: min(360px, 34vw); }
+.prow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 0; font-size: 11px;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+  opacity: 0;
+}
+.prow span { color: var(--blue); font-weight: 600; width: 3.4ch; }
+.prow b { flex: 1; font-weight: 500; letter-spacing: 0.1em; }
+.prow i { font-style: normal; color: var(--txt-mute); font-size: 10px; }
+.prow u {
+  text-decoration: none; width: 10px; height: 10px; border-radius: 3px; display: block;
+}
+/* patch-row status icon — blue = NFC, white = manual, green = patched */
+.nfcdot {
+  text-decoration: none; width: 10px; height: 10px; border-radius: 50%;
+  display: block; background: var(--blue); box-shadow: 0 0 8px var(--blue);
+}
+.nfcdot.manual { background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.7); }
+.card-foot {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+  font-size: 9px; letter-spacing: 0.26em; color: var(--txt-mute);
+}
+
+/* ── finale ────────────────────────────────────────────── */
+
+#ch-finale {
+  background: radial-gradient(ellipse 66% 56% at 50% 50%, rgba(0, 2, 8, 0.78), transparent 74%);
+}
+#finale-tag {
+  color: var(--txt);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+#finale-credit { margin-top: 30px; margin-bottom: 0; color: var(--txt-mute); }
+
+/* ── scrubber ──────────────────────────────────────────── */
+
+#scrubber {
+  position: absolute; left: 0; right: 0; bottom: 4.2vh; z-index: 45;
+  padding: 0 32px 16px;
+}
+#progress {
+  height: 2px; background: rgba(255,255,255,0.1);
+  margin-bottom: 13px; border-radius: 1px;
+}
+#progress-fill {
+  height: 100%; width: 0%; background: var(--blue);
+  box-shadow: 0 0 10px var(--blue); border-radius: 1px;
+}
+.scrub-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.tc { font-size: 11px; letter-spacing: 0.2em; color: var(--txt-2); min-width: 9ch; }
+.loop-badge { font-size: 10px; letter-spacing: 0.24em; color: var(--txt-mute); }
+
+#chapters { display: flex; gap: 4px; pointer-events: auto; flex-wrap: wrap; justify-content: center; }
+#chapters button {
+  appearance: none; background: none; border: none;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+  color: var(--txt-mute); padding: 6px 10px; cursor: pointer;
+  border-radius: 4px; transition: color 0.25s, background 0.25s;
+}
+#chapters button:hover { color: var(--txt); background: rgba(255,255,255,0.06); }
+#chapters button.live { color: var(--blue); }
+
+/* ── pause / hint ──────────────────────────────────────── */
+
+#paused-badge {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 50; font-size: 40px; color: var(--txt);
+  opacity: 0; pointer-events: none;
+  text-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+#hint {
+  position: absolute; bottom: 11vh; left: 50%; transform: translateX(-50%);
+  z-index: 46; font-size: 9px; letter-spacing: 0.3em; color: var(--txt-mute);
+  opacity: 0;
+}
+
+/* ── responsive ────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .ch-side { align-items: center; text-align: center; padding-right: 0; }
+  .card, .card.slim, #patch-card { width: min(86vw, 380px); }
+  #prep-log { display: none; }
+  #fix360 { display: none; }
+  #spec-ticks .tick { display: none; }
+  #chapters button { padding: 5px 6px; font-size: 8.5px; }
+  #brandbar { padding: 16px 18px; }
+}

@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Local dev tooling
+.claude/
+.idea/
+
+# ── Source-only assets — NOT needed by the deployed site ──────────────
+# (the runtime site is just index.html, css/, js/, and assets/ minus hi-res)
+*.mvr
+*.gdtf
+*.pdf
+screenshots_1284x2778/
+videos*/
+assets/storm1flex-hi/
+MAVERICK-STORM-1-FLEX-RIGHT.png
+unrival app icon-*.png

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>UNRIVAL — Every Fixture. One Tap. | A Chauvet Professional Film</title>
+<meta name="description" content="A looping film about UNRIVAL, the NFC fixture-configuration app by Chauvet Professional." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/png" href="assets/icon.png" />
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div id="ui">
+
+  <!-- persistent chrome -->
+  <header id="brandbar">
+    <div class="bb-left"><img class="bb-logo" src="assets/logo.png" alt="UNRIVAL" /></div>
+    <div class="bb-right">CHAUVET PROFESSIONAL &mdash; FIXTURE FILM 001</div>
+  </header>
+
+  <div class="letterbox lb-top"></div>
+  <div class="letterbox lb-bottom"></div>
+
+  <!-- ════ SCENE 0 — INTRO ════ -->
+  <section class="ch" id="ch-intro">
+    <p class="kicker" id="intro-kicker">CHAUVET PROFESSIONAL PRESENTS</p>
+    <img id="intro-logo" src="assets/logo-tight.png" alt="UNRIVAL" />
+    <p class="sub" id="intro-sub">THE NFC FIXTURE APP &mdash; A 02:32 LOOP</p>
+  </section>
+
+  <!-- ════ SCENE 1 — THE FIXTURE ════ -->
+  <section class="ch ch-low" id="ch-fixture">
+    <p class="kicker">01 / THE FIXTURE &mdash; CHAUVET MAVERICK</p>
+    <h2 class="headline">MEET THE RIG.</h2>
+    <p class="body" id="fixture-body">Hundreds of parameters. Dozens of units.<br/>One truck call before doors.</p>
+  </section>
+
+  <div id="spec-ticks">
+    <div class="tick t1"><i></i><span>DMX 512</span></div>
+    <div class="tick t2"><i></i><span>RDM UID</span></div>
+    <div class="tick t3"><i></i><span>PERSONALITY</span></div>
+    <div class="tick t4"><i></i><span>BLE FIRMWARE</span></div>
+  </div>
+
+  <!-- ════ SCENE 2 — TAP ════ -->
+  <section class="ch ch-low" id="ch-tap">
+    <p class="kicker">02 / NFC &mdash; NEAR FIELD CONFIGURATION</p>
+    <h2 class="headline">ONE TAP.</h2>
+    <p class="body">No cables. No console. No ladder.<br/><em class="hl" id="tap-power">FIXTURE POWER &mdash; OFF.</em></p>
+  </section>
+
+  <!-- ════ SCENE 3 — READ ════ -->
+  <section class="ch ch-side" id="ch-read">
+    <p class="kicker">03 / NDEF DECODE</p>
+    <h2 class="headline hl-sm">READ THE TAG.</h2>
+
+    <div id="record-chips">
+      <div class="chip" data-rec="CO"><b>CO</b><span class="chip-label"></span></div>
+      <div class="chip" data-rec="FI"><b>FI</b><span class="chip-label"></span></div>
+      <div class="chip" data-rec="LO"><b>LO</b><span class="chip-label"></span></div>
+      <div class="chip" data-rec="RE"><b>RE</b><span class="chip-label"></span></div>
+    </div>
+
+    <div class="card" id="identity-card">
+      <div class="card-head">FIXTURE IDENTITY</div>
+      <div class="row"><span>MODEL</span><b class="sc" id="id-model"></b></div>
+      <div class="row"><span>SERIAL</span><b class="sc" id="id-serial"></b></div>
+      <div class="row"><span>RDM UID</span><b class="sc" id="id-uid"></b></div>
+      <div class="row"><span>FIRMWARE</span><b class="sc" id="id-fw"></b></div>
+      <div class="row"><span>FIXTURE HOURS</span><b class="sc" id="id-hours"></b></div>
+      <div class="row"><span>STATUS</span><b class="sc ok" id="id-status"></b></div>
+    </div>
+  </section>
+
+  <!-- ════ SCENE 4 — EDIT ════ -->
+  <section class="ch ch-side" id="ch-edit">
+    <p class="kicker">04 / DMX ADDRESS + PERSONALITY</p>
+    <h2 class="headline hl-sm">DIAL IT IN.</h2>
+
+    <div id="dmx-block">
+      <div class="dmx-label">DMX ADDRESS</div>
+      <div id="dmx-counter">
+        <div class="digitcol"><div class="strip" id="strip-h"></div></div>
+        <div class="digitcol"><div class="strip" id="strip-t"></div></div>
+        <div class="digitcol"><div class="strip" id="strip-o"></div></div>
+      </div>
+      <div class="universe">
+        <span>001</span>
+        <div class="uni-track"><div class="uni-fill" id="uni-fill"></div></div>
+        <span>512</span>
+      </div>
+    </div>
+
+    <div class="card slim" id="mode-card">
+      <div class="card-head">PERSONALITY</div>
+      <div class="mode-window">
+        <div class="mode-strip" id="mode-strip">
+          <div class="mode">08-CH &mdash; BASIC</div>
+          <div class="mode">16-CH &mdash; STANDARD</div>
+          <div class="mode sel">22-CH &mdash; EXTENDED</div>
+        </div>
+      </div>
+      <div class="row"><span>FOOTPRINT</span><b id="mode-foot">CH 042 &ndash; 063</b></div>
+    </div>
+  </section>
+
+  <!-- ════ SCENE 5 — WRITE ════ -->
+  <section class="ch" id="ch-write">
+    <p class="kicker">05 / NDEF ENCODE &rarr; TAG</p>
+    <h2 class="headline">WRITE. DONE.</h2>
+    <div id="write-ring">
+      <svg viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="52"/>
+        <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"/>
+        <path class="ring-check" id="ring-check" d="M40 62 L54 76 L82 46"/>
+      </svg>
+      <div class="ring-time" id="ring-time">0.4s</div>
+    </div>
+    <p class="body" id="write-stamp">CONFIG WRITTEN &mdash; MAV22310847 &nbsp;&#10003;</p>
+  </section>
+
+  <!-- ════ SCENE 6 — AUTO-PREP ════ -->
+  <section class="ch ch-low" id="ch-prep">
+    <p class="kicker">06 / TEMPLATES + AUTO PREP &mdash; BUILT FOR RENTAL-HOUSE PREP</p>
+    <h2 class="headline">PREP THE FLEET.</h2>
+    <div id="prep-meter">
+      <div class="prep-count"><b id="prep-n">0</b>/9 READY</div>
+      <div class="prep-cells" id="prep-cells"></div>
+    </div>
+    <div id="prep-log"></div>
+  </section>
+
+  <!-- ════ SCENE 7 — RAPID PATCHING ════ -->
+  <section class="ch ch-side" id="ch-plot">
+    <p class="kicker">07 / RAPID PATCHING &mdash; MVR &middot; CHAMSYS QR &middot; CHAMSYS CSV</p>
+    <h2 class="headline hl-sm">WORK THE LIST.</h2>
+
+    <div id="import-row">
+      <div class="chip ichip"><b>MVR</b><span>FILE</span></div>
+      <div class="chip ichip"><b>QR</b><span>CHAMSYS</span></div>
+      <div class="chip ichip"><b>CSV</b><span>CHAMSYS</span></div>
+      <svg id="import-spin" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15"/></svg>
+      <span id="import-stamp">9 FIXTURES IMPORTED</span>
+    </div>
+
+    <div class="card" id="patch-card">
+      <div class="card-head">PATCH LIST &mdash; UNIVERSE 1</div>
+      <div class="prow"><span>042</span><b>MAV STORM 1 FLEX</b><i>22CH</i><u class="nfcdot"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>064</span><b>MAV STORM 1 FLEX</b><i>22CH</i><u class="nfcdot"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>086</span><b>MAV STORM 1 FLEX</b><i>22CH</i><u class="nfcdot"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>108</span><b>COLORADO SOLOBAR 4</b><i>16CH</i><u class="nfcdot"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>130</span><b>COLORADO SOLOBAR 4</b><i>16CH</i><u class="nfcdot"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>152</span><b>MAC AURA RAVEN XIP</b><i>MANUAL</i><u class="nfcdot manual"></u><em class="pchk">&#10003;</em></div>
+      <div class="prow"><span>174</span><b>MAC AURA RAVEN XIP</b><i>MANUAL</i><u class="nfcdot manual"></u><em class="pchk">&#10003;</em></div>
+      <div class="card-foot">BLUE = NFC, PATCHES ON TAP &nbsp;&middot;&nbsp; WHITE = MANUAL CHECKLIST</div>
+    </div>
+
+    <div class="card" id="fix360">
+      <div class="card-head">FIXTURE ID &mdash; OVATION E2</div>
+      <canvas id="spin360" width="300" height="300"></canvas>
+      <div class="card-foot">KNOW EXACTLY WHICH UNIT YOU&rsquo;RE TOUCHING</div>
+    </div>
+  </section>
+
+  <!-- ════ SCENE 8 — FINALE ════ -->
+  <section class="ch" id="ch-finale">
+    <img id="finale-logo" src="assets/logo-tight.png" alt="UNRIVAL" />
+    <p class="sub" id="finale-tag">EVERY FIXTURE. ONE TAP.</p>
+    <p class="kicker" id="finale-credit">A CHAUVET PROFESSIONAL APP &mdash; iOS / ANDROID</p>
+  </section>
+
+  <!-- scrubber -->
+  <footer id="scrubber">
+    <div id="progress"><div id="progress-fill"></div></div>
+    <div class="scrub-row">
+      <div class="tc" id="timecode">00:00:00</div>
+      <nav id="chapters">
+        <button data-t="fixture">01 FIXTURE</button>
+        <button data-t="tap">02 TAP</button>
+        <button data-t="read">03 READ</button>
+        <button data-t="edit">04 EDIT</button>
+        <button data-t="write">05 WRITE</button>
+        <button data-t="prep">06 AUTO-PREP</button>
+        <button data-t="plot">07 PATCH</button>
+      </nav>
+      <div class="loop-badge">&#8734; 02:32 LOOP</div>
+    </div>
+  </footer>
+
+  <div id="paused-badge">&#10074;&#10074;</div>
+  <div id="hint">CLICK TO PAUSE &mdash; CLICK A CHAPTER TO JUMP</div>
+
+  <div id="vignette"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="js/main.js?v=3"></script>
+</body>
+</html>
