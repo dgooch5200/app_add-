@@ -2,17 +2,25 @@
 # ═══════════════════════════════════════════════════════════════════════
 # Deploy the UNRIVAL fixture film to a Raspberry Pi 4 as a boot-to-kiosk.
 #
-#   Raspberry Pi OS Bookworm Desktop (Wayland: labwc / wayfire)
-#   • rsync the static site to the Pi
-#   • serve it with `python3 -m http.server` (systemd service)
-#   • Chromium autostarts fullscreen in --kiosk (no toolbars/cursor chrome)
-#   • desktop autologin so it comes up on every power-on, unattended
+#   Target verified on: Raspberry Pi 4 + Debian 13 (trixie), Wayland/labwc,
+#   GeeekPi 9" 1280x720 panel. Also works on Raspberry Pi OS (labwc/wayfire).
+#
+#   • rsync the static site to the Pi (user's home — no root)
+#   • a single kiosk-launch.sh starts the python static server AND Chromium
+#   • labwc + wayfire autostart run that script every session = every boot
+#   • the ONLY privileged step is the apt install (tag: packages)
 #
 # Usage:
 #   cd ansable
+#   # fresh Pi (needs to install chromium etc.):
 #   ansible-playbook -i inventory.ini deploy_pi4.yml --ask-become-pass
+#   # already-provisioned Pi (chromium present) — no sudo needed at all:
+#   ansible-playbook -i inventory.ini deploy_pi4.yml --skip-tags packages
 #
-# Then reboot the Pi once:  ansible -i inventory.ini pi4 -b -m reboot
+# Prerequisite: the login user autostarts into a Wayland (labwc/wayfire)
+# session — Raspberry Pi OS desktop and this Pi already do (autologin on).
+#
+# Then reboot the Pi to start the kiosk.
 # ═══════════════════════════════════════════════════════════════════════
 - hosts: pi4
   vars_files:
@@ -43,9 +51,10 @@
       args:
         chdir: "{{ local_project_path }}"
 
-    # ── Pi: packages ────────────────────────────────────────────────────
+    # ── Pi: packages (the ONLY privileged step; skip if already installed) ─
     - name: Install kiosk packages on the Pi
       become: yes
+      tags: packages
       ansible.builtin.apt:
         name:
           - chromium           # the kiosk browser (Debian/trixie package name)
@@ -55,14 +64,11 @@
         state: present
         update_cache: yes
 
-    # ── Pi: ship the static site ────────────────────────────────────────
+    # ── Pi: ship the static site (into the user's home — no root) ────────
     - name: Ensure the project directory exists
-      become: yes
       ansible.builtin.file:
         path: "{{ remote_base_path }}/{{ project_name }}"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0755'
 
     - name: Sync site directories to the Pi
@@ -82,53 +88,28 @@
       ansible.builtin.copy:
         src: "{{ local_project_path }}/index.html"
         dest: "{{ remote_base_path }}/{{ project_name }}/index.html"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0644'
 
-    # ── Pi: serve the site with a tiny systemd service ──────────────────
-    - name: Create the static-server systemd service
-      become: yes
-      ansible.builtin.copy:
-        dest: "/etc/systemd/system/{{ project_name }}.service"
-        mode: '0644'
-        content: |
-          [Unit]
-          Description=UNRIVAL fixture film - static HTTP server
-          After=network.target
-
-          [Service]
-          User={{ ansible_user }}
-          WorkingDirectory={{ remote_base_path }}/{{ project_name }}
-          ExecStart=/usr/bin/python3 -m http.server {{ http_port }} --bind 127.0.0.1
-          Restart=always
-          RestartSec=2
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Enable and (re)start the static server
-      become: yes
-      ansible.builtin.systemd:
-        name: "{{ project_name }}.service"
-        enabled: yes
-        state: restarted
-        daemon_reload: yes
-
-    # ── Pi: the kiosk launch script ─────────────────────────────────────
-    - name: Install the Chromium kiosk launch script
+    # ── Pi: one script starts the static server AND the kiosk browser ────
+    - name: Install the kiosk launch script (server + Chromium)
       ansible.builtin.copy:
         dest: "{{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0755'
         content: |
           #!/usr/bin/env bash
           set -u
+          PORT={{ http_port }}
+          DIR="{{ remote_base_path }}/{{ project_name }}"
           URL="{{ kiosk_url }}"
           PROFILE="$HOME/.config/chromium-kiosk"
 
-          # Wait until the local static server is actually answering
+          # Start the static server if it isn't already running
+          if ! pgrep -f "http.server $PORT" >/dev/null 2>&1; then
+            setsid /usr/bin/python3 -m http.server "$PORT" --bind 127.0.0.1 \
+              --directory "$DIR" >/tmp/{{ project_name }}-http.log 2>&1 &
+          fi
+
+          # Wait until the server is actually answering
           until curl -fsS "$URL" >/dev/null 2>&1; do sleep 1; done
 
           # A power-cut leaves Chromium thinking it crashed -> "Restore pages?"
@@ -160,34 +141,27 @@
             --canvas-oop-rasterization \
             --disable-software-rasterizer
 
-    # ── Pi: autostart the kiosk under whichever Wayland compositor runs ──
+    # ── Pi: autostart the launcher under whichever Wayland compositor runs ─
     - name: Ensure ~/.config/labwc exists
       ansible.builtin.file:
         path: "{{ remote_base_path }}/.config/labwc"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0755'
 
-    - name: labwc - launch the kiosk on session start
-      ansible.builtin.blockinfile:
-        path: "{{ remote_base_path }}/.config/labwc/autostart"
-        create: yes
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
-        marker: "# {mark} UNRIVAL KIOSK"
-        block: |
+    - name: labwc - run the kiosk launcher on session start
+      ansible.builtin.copy:
+        dest: "{{ remote_base_path }}/.config/labwc/autostart"
+        mode: '0755'
+        content: |
+          # UNRIVAL fixture film kiosk (starts the static server + Chromium)
           {{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh &
 
-    - name: wayfire - launch the kiosk on session start
+    - name: wayfire - run the kiosk launcher on session start
       community.general.ini_file:
         path: "{{ remote_base_path }}/.config/wayfire.ini"
         section: autostart
         option: unrival_kiosk
         value: "{{ remote_base_path }}/{{ project_name }}/kiosk-launch.sh"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0644'
         create: yes
 
@@ -197,26 +171,32 @@
         section: idle
         option: "{{ item.k }}"
         value: "{{ item.v }}"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0644'
       loop:
         - { k: "dpms_timeout", v: "-1" }
         - { k: "disable_on_fullscreen", v: "true" }
 
-    # ── Pi: boot straight into the desktop session, no login prompt ─────
-    - name: Boot to desktop with autologin (so the kiosk starts unattended)
+    # ── Pi: desktop autologin (Raspberry Pi OS only; this Pi already has it) ─
+    - name: Detect raspi-config (Raspberry Pi OS)
+      ansible.builtin.command: which raspi-config
+      register: raspi_config_bin
+      changed_when: false
+      failed_when: false
+
+    - name: Enable desktop autologin (Raspberry Pi OS)
       become: yes
+      tags: packages
       ansible.builtin.command: raspi-config nonint do_boot_behaviour B4
       changed_when: false
+      when: raspi_config_bin.rc == 0
 
-    - name: Disable console screen blanking
-      become: yes
-      ansible.builtin.command: raspi-config nonint do_blanking 1
-      changed_when: false
+    - name: Autologin prerequisite note (non-Raspberry-Pi-OS)
+      ansible.builtin.debug:
+        msg: >-
+          raspi-config not found — make sure the login user autostarts into a
+          labwc/wayfire Wayland session (this Pi already does via autologin).
+      when: raspi_config_bin.rc != 0
 
     - name: Reminder
       ansible.builtin.debug:
-        msg: >-
-          Deployed. Reboot the Pi to start the kiosk:
-          ansible -i inventory.ini pi4 -b -m reboot
+        msg: "Deployed. Reboot the Pi to bring the kiosk up fullscreen."
