@@ -48,7 +48,7 @@
       become: yes
       ansible.builtin.apt:
         name:
-          - chromium-browser   # the kiosk browser
+          - chromium           # the kiosk browser (Debian/trixie package name)
           - python3            # static file server (usually preinstalled)
           - rsync              # for the synchronize tasks below
           - curl               # launch script waits on the server with it
@@ -138,7 +138,7 @@
             sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "$PREF"
           fi
 
-          exec chromium-browser \
+          exec chromium \
             --kiosk \
             --app="$URL" \
             --user-data-dir="$PROFILE" \
@@ -150,7 +150,15 @@
             --disable-restore-session-state \
             --disable-features=Translate,TranslateUI \
             --check-for-update-interval=31536000 \
-            --autoplay-policy=no-user-gesture-required
+            --autoplay-policy=no-user-gesture-required \
+            --password-store=basic \
+            `# ^ skip the GNOME keyring prompt that otherwise blocks the kiosk` \
+            `# --- Pi 4 GPU: hardware-accelerate WebGL via the V3D driver ---` \
+            --ignore-gpu-blocklist \
+            --enable-gpu-rasterization \
+            --enable-zero-copy \
+            --canvas-oop-rasterization \
+            --disable-software-rasterizer
 
     # ── Pi: autostart the kiosk under whichever Wayland compositor runs ──
     - name: Ensure ~/.config/labwc exists

@@ -32,8 +32,14 @@ const T = {
 /* ═══════════════ RENDERER / SCENE ═════════════════════ */
 
 const canvas = document.getElementById("gl");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Perf knobs (URL-tunable for Pi/kiosk tuning):
+//   ?aa=0   → disable MSAA (big win on fill-rate-bound GPUs like the Pi 4)
+//   ?dpr=N  → force device-pixel-ratio / internal render scale (e.g. 0.75)
+const _qp = new URLSearchParams(location.search);
+const _AA = _qp.get("aa") !== "0";
+const _DPR = parseFloat(_qp.get("dpr")) || Math.min(devicePixelRatio, 2);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: _AA });
+renderer.setPixelRatio(_DPR);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.35;
@@ -1369,6 +1375,19 @@ function chapterFor(t) {
 let liveChapter = "";
 let dispState = "001";
 
+/* ── optional on-screen FPS meter (?fps) — for Pi/kiosk perf checks ── */
+const SHOW_FPS = new URLSearchParams(location.search).has("fps");
+let _fpsEl = null, _fpsFrames = 0, _fpsT0 = performance.now();
+if (SHOW_FPS) {
+  _fpsEl = document.createElement("div");
+  _fpsEl.style.cssText =
+    "position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;" +
+    "font:700 22px/1 monospace;color:#6ee7f9;background:rgba(0,0,0,.6);" +
+    "padding:6px 12px;border-radius:6px;pointer-events:none";
+  _fpsEl.textContent = "-- fps";
+  document.body.appendChild(_fpsEl);
+}
+
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   elapsed += dt;
@@ -1438,7 +1457,21 @@ function frame() {
     drawFixtureDisplay(ds, ds === "042" ? "22-CH" : "16-CH");
   }
 
-  composer.render();
+  if (SHOW_FPS) {
+    _fpsFrames++;
+    const now = performance.now();
+    if (now - _fpsT0 >= 500) {
+      _fpsEl.textContent = Math.round((_fpsFrames * 1000) / (now - _fpsT0)) + " fps";
+      _fpsFrames = 0; _fpsT0 = now;
+    }
+  }
+
+  // Bloom is disabled, so skip the EffectComposer's HalfFloat render target +
+  // OutputPass blit (heavy on the Pi 4 GPU) and render straight to screen —
+  // the renderer applies the same ACES tone mapping + sRGB output. If bloom is
+  // ever re-enabled, fall back to the composer so the pass chain runs.
+  if (bloom.enabled) composer.render();
+  else renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(frame);
 window.__frame = frame; // manual tick for dev-tools verification in hidden windows

@@ -10,8 +10,10 @@ project_name: unrival-film
 
 # Local static HTTP server (served on the Pi, bound to localhost)
 http_port: 8080
-# ?kiosk hides the on-page dev chrome (scrubber, chapter nav, hint, cursor)
-kiosk_url: "http://localhost:{{ http_port }}/?kiosk"
+# ?kiosk hides on-page dev chrome (scrubber, chapter nav, hint, cursor).
+# aa=0 disables MSAA, dpr=0.7 renders at 70% internal scale — together they
+# take the Pi 4 from ~15-19fps to ~42fps at the heaviest beat at 1280x720.
+kiosk_url: "http://localhost:{{ http_port }}/?kiosk&aa=0&dpr=0.7"
 
 # Project root on this (control) machine — the dir above ansable/
 local_project_path: "{{ playbook_dir }}/.."
