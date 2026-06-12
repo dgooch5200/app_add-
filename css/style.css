@@ -394,6 +394,20 @@ html, body {
   #brandbar { padding: 16px 18px; }
 }
 
+/* ── short-screen fit (≤760px tall, e.g. the 1280×720 kiosk panel) ──────
+   The read/edit/patch side-scenes stack a headline + a tall card that, when
+   vertically centered, pushes the card's lower rows + foot legend off the
+   bottom of a 16:9 panel. Tighten vertical metrics so the whole card fits. */
+@media (max-height: 760px) {
+  .ch-side .headline.hl-sm { font-size: clamp(32px, 4.2vw, 58px); }
+  .card { margin-top: 14px; padding: 12px 18px 10px; }
+  .card-head { padding-bottom: 7px; margin-bottom: 3px; }
+  .card .row { padding: 4px 0; }
+  .prow { padding: 3px 0; }
+  .card-foot { margin-top: 6px; padding-top: 6px; }
+  #import-row { margin-bottom: 8px; }
+}
+
 /* ═══════════════ KIOSK MODE (?kiosk) ══════════════════════
    Raspberry Pi installation: hide every dev/control affordance
    and the cursor so the film plays as an untouchable clean loop. */

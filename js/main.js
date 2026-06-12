@@ -1484,6 +1484,10 @@ window.__dev = { scene, camera, renderer, composer, fixtures, THREE };
 const KIOSK = new URLSearchParams(location.search).has("kiosk");
 if (KIOSK) document.documentElement.classList.add("kiosk");
 
+// ?seek=SECONDS — jump to a beat and pause (for screenshots / layout checks).
+const _seek = _qp.get("seek");
+if (_seek !== null) { tl.pause(); tl.seek(parseFloat(_seek) || 0, false); }
+
 if (!KIOSK) {
   chapterBtns.forEach((b) => {
     b.addEventListener("click", (e) => {
